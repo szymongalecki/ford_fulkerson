@@ -53,7 +53,7 @@ class Network:
     # Breadth-first search Network traversal
     def BFS(self, from_id, target, path):
         # check if node is in Network
-        if not from_id in self.nodes:
+        if not from_id in self.nodes.keys():
             return False
 
         # mark all vertices as not visited and create queue
@@ -63,36 +63,57 @@ class Network:
         queue.append(from_id)
         visited[from_id] = True
 
-        while queue:
+        while not len(queue) == 0:
             from_id = queue.pop(0)
-            print(from_id, end=" ")
-            if from_id in self.nodes:
-                print(f"{self.nodes[from_id].get_edges()=}")
+            if from_id in self.nodes.keys():
                 for to_id in self.nodes[from_id].get_edges():
-                    if visited[to_id] == False:
+                    if visited[to_id] == False and (self.nodes[from_id].get_edges()[to_id][1] > 0 or self.nodes[from_id].get_edges()[to_id][1] == -1):
                         queue.append(to_id)
                         visited[to_id] = True
                         path[to_id] = from_id
-                        if to_id == target:
-                            return True
+        if visited[target]:
+            return True
+        return False
 
     def ford_fulkerson(self, from_id, target):
         path = [-1] * self.number_of_nodes
-        flow = float("Inf")
+        max_flows = 0
+        while self.BFS(from_id, target, path):
+            flow = float("Inf")
+            start_node = target
+            print(path)
+            testMe = [start_node]
+            while start_node != from_id:
+                cap = self.nodes[path[start_node]].get_edges()[start_node][1]
+                if cap == -1:
+                    cap = float("Inf")
+                flow = min(flow, cap) 
+                start_node = path[start_node]
+                testMe.append(start_node)
+            print(testMe)
+            max_flows = max_flows + flow
+            print(flow)
 
-        if self.BFS(from_id, target, path):
-            while target != from_id:
-                print(target)
-                target = path[target]
-            print(from_id)
+            #update residual graph
+            start_node2 = target
+            while(start_node2 != from_id):
+                u = path[start_node2]
+                self.nodes[u].get_edges()[start_node2][1] = self.nodes[u].get_edges()[start_node2][1] - flow
 
-            # Probably wrong
-            # if self.BFS(from_id, target, path):
-            #     while target != from_id:
-            #         target = path[target]
-            #         flow = min(flow, self.nodes[path[from_id]].get_edges()[target])
+                # check if node is in Network
+                if start_node2 not in self.nodes.keys():
+                    node = Node(start_node2)
+                    self.nodes[start_node2] = node
+                    self.nodes[start_node2].add_edge(u, 0, 0)
+                elif not u in self.nodes[start_node2].get_edges():
+                    self.nodes[start_node2].add_edge(u, 0, 0)
+                self.nodes[start_node2].get_edges()[u][1] = self.nodes[start_node2].get_edges()[u][1] + flow
 
-            print(from_id)
+                start_node2 = u
+        print(net)
+        return max_flows
+
+
 
 
 # n = Node(10)
@@ -104,5 +125,5 @@ net = Network()
 # net.add_nodes(n)
 # net.add_nodes(n1)
 print(net)
-net.ford_fulkerson(0, 54)
+print(f"max flow {net.ford_fulkerson(0, 53)}")
 # print(net.BFS(0, 54))
