@@ -1,108 +1,93 @@
-class Node:
-    # Node constructor
-    def __init__(self, id) -> None:
-        self.id = id
-        self.edges = {}
+import sys
+# number of nodes in the network
+number_of_nodes = int(input())
+graph = [[0 for x in range(number_of_nodes)] for y in range(number_of_nodes)]
+# skip reading node names as they are not unique
+while input() != "DESTINATIONS":
+    pass
+# create all edges
+for _ in range(int(input())):
+    from_id, to_id, capacity = [int(_) for _ in input().split()]
+    if capacity == -1:
+        capacity = sys.maxsize
+    graph[from_id][to_id] = capacity
+    graph[to_id][from_id] = capacity
 
-    # string representation of Node
-    def __repr__(self) -> str:
-        return f"{self.id} : {self.edges}"
+org_graph = [i[:] for i in graph]
+# Breadth-first search Network traversal
+def BFS(from_id, target, path):
 
-    # add edge with given (id, flow, capacity) to the Node
-    def add_edge(self, id, flow, capacity):
-        self.edges[id] = [flow, capacity]
+    # mark all vertices as not visited and create queue
+    visited = [False] * number_of_nodes
+    queue = []
 
-    def get_id(self):
-        return self.id
+    queue.append(from_id)
+    visited[from_id] = True
 
-    def get_edges(self):
-        return self.edges
+    while not len(queue) == 0:
+        from_id = queue.pop(0)
+        for to_id in range(len(graph[from_id])):
+            if visited[to_id] == False and graph[from_id][to_id] > 0:
+                queue.append(to_id)
+                visited[to_id] = True
+                path[to_id] = from_id
+                if visited[target]:
+                    return True
+    return False
 
+def ford_fulkerson(from_id, target):
+    path = [-1] * number_of_nodes
+    max_flows = 0
+    while BFS(from_id, target, path):
+        flow = sys.maxsize
+        start_node = target
+        print(path)
+        while start_node != from_id:
+            flow = min(flow, graph[path[start_node]][start_node]) 
+            start_node = path[start_node]
+        max_flows = max_flows + flow
 
-class Network:
-    # Network constructor
-    def __init__(self) -> None:
-        self.number_of_nodes = 0
-        self.nodes = {}
-        self.get_input()
+        #update residual graph
+        start_node2 = target
+        while(start_node2 != from_id):
+            u = path[start_node2]
+            graph[u][start_node2]= graph[u][start_node2] - flow
+            graph[start_node2][u] = graph[start_node2][u] + flow
+            start_node2 = u
 
-    # string representation of Network
-    def __repr__(self) -> str:
-        res = ""
-        for _, node in self.nodes.items():
-            res += "\n" + str(node)
-        return res
+    return max_flows
 
-    # parse input
-    def get_input(self):
-        # number of nodes in the network
-        self.number_of_nodes = int(input())
+# Function for Depth first search
+# Traversal of the graph
+def dfs(graph, s, visited):
+    visited[s] = True
+    for v in range(len(graph)):
+        # If there is an edge and we haven't visited
+        if graph[s][v] > 0 and not visited[v]:
+            # Call recusively from new vertex
+            dfs(graph, v, visited)
 
-        # skip reading node names as they are not unique
-        while input() != "DESTINATIONS":
-            pass
+def min_cut(source):
+    if not org_graph:
+        return False
 
-        # create all edges
-        for _ in range(int(input())):
-            from_id, to_id, capacity = [int(_) for _ in input().split()]
-            if from_id not in self.nodes.keys():
-                node = Node(from_id)
-                self.nodes[from_id] = node
-            self.nodes[from_id].add_edge(to_id, 0, capacity)
+    edges = []
 
-    # Breadth-first search Network traversal
-    def BFS(self, from_id, target, path):
-        # check if node is in Network
-        if not from_id in self.nodes:
-            return False
+    # Perform DFS
+    visited = [False] * len(graph)
+    dfs(graph, source, visited)
 
-        # mark all vertices as not visited and create queue
-        visited = [False] * self.number_of_nodes
-        queue = []
+    # Check for edges that had a capacity in the original graph, but
+    # now has 0 capacity.
+    # Also has to go from visited in the DFS to not visited
+    for i in range(len(graph)):
+        for j in range(len(graph)):
+            if graph[i][j] == 0 and org_graph[i][j] > 0 and visited[i] and not visited[j]:
+                edges.append((i, j, org_graph[i][j]))
 
-        queue.append(from_id)
-        visited[from_id] = True
-
-        while queue:
-            from_id = queue.pop(0)
-            print(from_id, end=" ")
-            if from_id in self.nodes:
-                print(f"{self.nodes[from_id].get_edges()=}")
-                for to_id in self.nodes[from_id].get_edges():
-                    if visited[to_id] == False:
-                        queue.append(to_id)
-                        visited[to_id] = True
-                        path[to_id] = from_id
-                        if to_id == target:
-                            return True
-
-    def ford_fulkerson(self, from_id, target):
-        path = [-1] * self.number_of_nodes
-        flow = float("Inf")
-
-        if self.BFS(from_id, target, path):
-            while target != from_id:
-                print(target)
-                target = path[target]
-            print(from_id)
-
-            # Probably wrong
-            # if self.BFS(from_id, target, path):
-            #     while target != from_id:
-            #         target = path[target]
-            #         flow = min(flow, self.nodes[path[from_id]].get_edges()[target])
-
-            print(from_id)
+    return edges
 
 
-# n = Node(10)
-# n1 = Node(30)
-# n.add_edge(30, 2, 10)
-# print(n, n1)
-net = Network()
-# print(net)
-# net.add_nodes(n)
-# net.add_nodes(n1)
-print(net)
-net.ford_fulkerson(0, 54)
-# print(net.BFS(0, 54))
+print(f"Max flow: {ford_fulkerson(0,54)}")
+print(f"Min cut: {min_cut(0)}")
+
