@@ -1,93 +1,104 @@
-import sys
-# number of nodes in the network
-number_of_nodes = int(input())
-graph = [[0 for x in range(number_of_nodes)] for y in range(number_of_nodes)]
-# skip reading node names as they are not unique
-while input() != "DESTINATIONS":
-    pass
-# create all edges
-for _ in range(int(input())):
-    from_id, to_id, capacity = [int(_) for _ in input().split()]
-    if capacity == -1:
-        capacity = sys.maxsize
-    graph[from_id][to_id] = capacity
-    graph[to_id][from_id] = capacity
+"""
+run it:
+    cat input.txt | python3 ff.py
+"""
 
-org_graph = [i[:] for i in graph]
+
+def parse_input():
+    # number of nodes in the network
+    node_count = int(input())
+    graph = [[0 for _ in range(node_count)] for _ in range(node_count)]
+
+    # skip reading node names as they are not unique
+    while input() != "DESTINATIONS":
+        pass
+
+    # for each connection create two edges with equal capacities
+    for _ in range(int(input())):
+        from_, to_, capacity = [int(_) for _ in input().split()]
+        if capacity == -1:
+            capacity = float("inf")
+        graph[from_][to_] = capacity
+        graph[to_][from_] = capacity
+
+    # original graph
+    original_graph = [i[:] for i in graph]
+    return graph, original_graph, node_count
+
+
 # Breadth-first search Network traversal
-def BFS(from_id, target, path):
-
+def bfs(from_, target, path):
     # mark all vertices as not visited and create queue
-    visited = [False] * number_of_nodes
-    queue = []
+    visited = [False] * node_count
+    queue = [from_]
+    visited[from_] = True
 
-    queue.append(from_id)
-    visited[from_id] = True
-
-    while not len(queue) == 0:
-        from_id = queue.pop(0)
-        for to_id in range(len(graph[from_id])):
-            if visited[to_id] == False and graph[from_id][to_id] > 0:
-                queue.append(to_id)
-                visited[to_id] = True
-                path[to_id] = from_id
+    while queue:
+        from_ = queue.pop(0)
+        for to_, _ in enumerate(graph[from_]):
+            if not visited[to_] and graph[from_][to_] > 0:
+                queue.append(to_)
+                visited[to_] = True
+                path[to_] = from_
                 if visited[target]:
                     return True
     return False
 
-def ford_fulkerson(from_id, target):
-    path = [-1] * number_of_nodes
-    max_flows = 0
-    while BFS(from_id, target, path):
-        flow = sys.maxsize
-        start_node = target
-        print(path)
-        while start_node != from_id:
-            flow = min(flow, graph[path[start_node]][start_node]) 
-            start_node = path[start_node]
-        max_flows = max_flows + flow
 
-        #update residual graph
-        start_node2 = target
-        while(start_node2 != from_id):
-            u = path[start_node2]
-            graph[u][start_node2]= graph[u][start_node2] - flow
-            graph[start_node2][u] = graph[start_node2][u] + flow
-            start_node2 = u
+def ford_fulkerson(from_, target):
+    path = [-1] * node_count
+    max_flow = 0
+    while bfs(from_, target, path):
+        flow = float("inf")
+        current = target
 
-    return max_flows
+        while current != from_:
+            flow = min(flow, graph[path[current]][current])
+            current = path[current]
+        max_flow += flow
 
-# Function for Depth first search
-# Traversal of the graph
+        # update residual graph
+        current = target
+        while current != from_:
+            prev = path[current]
+            graph[prev][current] -= flow
+            graph[current][prev] += flow
+            current = prev
+    return max_flow
+
+
+# Depth-First search taversal
 def dfs(graph, s, visited):
     visited[s] = True
-    for v in range(len(graph)):
-        # If there is an edge and we haven't visited
+    for v, _ in enumerate(graph):
+        # if there is an edge and we haven't visited
         if graph[s][v] > 0 and not visited[v]:
-            # Call recusively from new vertex
+            # call recusively from new vertex
             dfs(graph, v, visited)
 
+
 def min_cut(source):
-    if not org_graph:
-        return False
-
+    # perform DFS
     edges = []
-
-    # Perform DFS
     visited = [False] * len(graph)
     dfs(graph, source, visited)
 
-    # Check for edges that had a capacity in the original graph, but
-    # now has 0 capacity.
-    # Also has to go from visited in the DFS to not visited
-    for i in range(len(graph)):
-        for j in range(len(graph)):
-            if graph[i][j] == 0 and org_graph[i][j] > 0 and visited[i] and not visited[j]:
-                edges.append((i, j, org_graph[i][j]))
-
+    # search for edges that had a positive capacity in the original graph,
+    # but now have 0 capacity,
+    # additionally those edges have to go from visited in the DFS to not visited
+    for i, _ in enumerate(graph):
+        for j, _ in enumerate(graph):
+            if (
+                graph[i][j] == 0
+                and original_graph[i][j] > 0
+                and visited[i]
+                and not visited[j]
+            ):
+                edges.append((i, j, original_graph[i][j]))
+                # edges.append(f"{i}->{j}, f={original_graph[i][j]}")
     return edges
 
 
+graph, original_graph, node_count = parse_input()
 print(f"Max flow: {ford_fulkerson(0,54)}")
 print(f"Min cut: {min_cut(0)}")
-
